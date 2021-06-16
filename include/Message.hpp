@@ -3,11 +3,8 @@
 #include "utils.hpp"
 #define MAX_PAYLOAD_LENGTH 64
 
-#define MESSAGE_ID_SET_UUID 0
-#define MESSAGE_ID_REQUEST_CONFIG 1
-#define MESSAGE_ID_CONFIG 2
-#define MESSAGE_ID_REQUEST_READINGS 3
-#define MESSAGE_ID_READINGS 4
+#define MESSAGE_ID_REQUEST_VALUE 0
+#define MESSAGE_ID_VALUE 1
 
 struct __attribute__((packed)) Message {
   uint8_t __A = 'A';

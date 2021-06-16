@@ -4,10 +4,8 @@
 #include "Message.hpp"
 #include "utils.hpp"
 
-#define SEND_BACKOFF_MIN 200
-#define SEND_BACKOFF_MAX 1000
-#define SEND_WAIT_SINCE_ACTIVE_MIN 200
-#define SEND_WAIT_SINCE_ACTIVE_MAX 500
+#define SEND_WAIT_SINCE_ACTIVE_MIN 500
+#define SEND_WAIT_SINCE_ACTIVE_MAX 1000
 
 struct ForSend {
   uint8_t* buff;
@@ -28,7 +26,8 @@ struct NetworkBase {
   Message outbound;
   Parser parser{inbound};
 
-  unsigned long medium_last_active;
+  unsigned long medium_last_active = 0;
+  int medium_last_avaliable = 0;
   uint16_t backoff = 0;
   uint16_t wait_since_active =
       random(SEND_WAIT_SINCE_ACTIVE_MIN, SEND_WAIT_SINCE_ACTIVE_MAX);
@@ -38,34 +37,38 @@ struct NetworkBase {
       : stream(_stream), device_id(_device_id) {}
 
   void loop() {
-    auto now = millis();
-    if (stream.available())
-      medium_last_active = now;
-    while (stream.available()) {
-      auto result = parser.parse(stream.read());
-      if (result) {
-        if (result == PARSED_MESSAGE) {
-          handleAnyMessage();
-          if (uuid_equals(parser.message.to_id, device_id)) {
-            handleMessage();
-          } else if (uuid_null(parser.message.to_id)) {
-            handleBroadcast();
-          }
-        } else {
-          handleBadMessage();
-        }
-      }
+    if (stream.available() != medium_last_avaliable) {
+      medium_last_avaliable = stream.available();
+      medium_last_active = millis();
     }
-    if (parser.attempt_timeout())
-      handleTimeout();
     if (for_send_queue.size()) {
-      if (now - medium_last_active >= wait_since_active) {
-        if (stream.available()) return;
+      if (millis() - medium_last_active >= wait_since_active) {
+        medium_last_active = millis();
         ForSend* for_send = for_send_queue.shift();
         stream.write(for_send->buff, for_send->len);
         handleSent(for_send->buff, for_send->len);
         delete for_send;
       }
+    } else {
+      while (stream.available()) {
+        auto result = parser.parse(stream.read());
+        medium_last_avaliable--;
+        if (result) {
+          if (result == PARSED_MESSAGE) {
+            handleAnyMessage();
+            if (uuid_equals(parser.message.to_id, device_id)) {
+              handleMessage();
+            } else if (uuid_null(parser.message.to_id)) {
+              handleBroadcast();
+            }
+          } else {
+            handleBadMessage();
+          }
+          return;
+        }
+      }
+      if (parser.attempt_timeout())
+        handleTimeout();
     }
   }
 

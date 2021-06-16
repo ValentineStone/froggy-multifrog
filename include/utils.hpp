@@ -39,8 +39,18 @@ String uuid_stringify(uint8_t* uuid) {
   return str;
 }
 
-void uuid_parse(String& uuid, uint8_t* parsed) {
-  for (uint8_t i = 0, j = 0; i < uuid.length(); i++, j++) {
+void uuid_stringify(uint8_t* uuid, char* str) {
+  uint8_t pos = 0;
+  for (uint8_t i = 0; i < 16; i++) {
+    if (i == 4 || i == 6 || i == 8 || i == 10)
+      str[pos++] = '-';
+    *((uint16_t*)(str + pos)) = *((uint16_t*)hex(uuid[i]));
+    pos += 2;
+  }
+}
+
+void uuid_parse(const char* uuid, uint8_t* parsed) {
+  for (uint8_t i = 0, j = 0; i < 36; i++, j++) {
     if (uuid[i] == '-') {
       j--;
       continue;
@@ -94,4 +104,10 @@ void write_device_uuid(uint8_t* id) {
   }
   EEPROM.write(EEPROM_UUID_OFFSET + 16, crc);
   EEPROM.commit();
+}
+
+int64_t date_now() {
+  struct timeval tv_now;
+  gettimeofday(&tv_now, NULL);
+  return (int64_t)tv_now.tv_sec * 1000L + (int64_t)tv_now.tv_usec / 1000L;
 }
