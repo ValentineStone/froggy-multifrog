@@ -80,10 +80,11 @@ void sync_time() {
 }
 
 #define HARDWARE_PARSE_FROG 0
-#define HARDWARE_PARSE_SENSOR 1
-#define HARDWARE_PARSE_PORT 2
-#define HARDWARE_PARSE_INTERVAL 3
-#define HARDWARE_PARSE_FINISH 4
+#define HARDWARE_PARSE_FROG_ID 1
+#define HARDWARE_PARSE_SENSOR 2
+#define HARDWARE_PARSE_PORT 3
+#define HARDWARE_PARSE_INTERVAL 4
+#define HARDWARE_PARSE_FINISH 5
 
 void load_hardware_configuration(Multifrog& multifrog) {
   Serial.println("Loading hardware configuration...");
@@ -97,10 +98,13 @@ void load_hardware_configuration(Multifrog& multifrog) {
     char* data = (char*)str.c_str();
     char* end = data + str.length();
     uint8_t state = HARDWARE_PARSE_FROG;
-    uint8_t uuid[16];
-    uint8_t port;
-    unsigned long interval;
+
     Frog* frog;
+    uint8_t id;
+    char* uuid;
+    uint8_t port;
+    uint64_t interval;
+
     while (data < end && state != HARDWARE_PARSE_FINISH) {
       switch (state) {
         case HARDWARE_PARSE_FROG:
@@ -108,13 +112,21 @@ void load_hardware_configuration(Multifrog& multifrog) {
             state = HARDWARE_PARSE_FINISH;
             break;
           }
-          uuid_parse(data, uuid);
+          uuid = data;
           Serial.print("Frog ");
-          Serial.write(data, 36);
-          Serial.println();
+          Serial.write(uuid, 36);
           data += 36;
-          frog = multifrog.add_frog(uuid);
           if (data < end && *data++ == ':')
+            state = HARDWARE_PARSE_FROG_ID;
+          else
+            state = HARDWARE_PARSE_FINISH;
+          break;
+        case HARDWARE_PARSE_FROG_ID:
+          id = strtoul(data, &data, 10);
+          Serial.print(" id=");
+          Serial.println(id);
+          frog = multifrog.add_frog(uuid, id);
+          if (*data++ == ':')
             state = HARDWARE_PARSE_SENSOR;
           else
             state = HARDWARE_PARSE_FINISH;
@@ -124,7 +136,7 @@ void load_hardware_configuration(Multifrog& multifrog) {
             state = HARDWARE_PARSE_FINISH;
             break;
           }
-          uuid_parse(data, uuid);
+          uuid = data;
           Serial.print("  Sensor ");
           Serial.write(data, 36);
           data += 36;

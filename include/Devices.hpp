@@ -4,7 +4,7 @@
 #include "utils.hpp"
 
 struct Sensor {
-  uint8_t id[16];
+  char uuid[37];
   uint8_t port;
   uint64_t interval;
   float reading;
@@ -15,24 +15,17 @@ struct Sensor {
 };
 
 struct Frog {
-  uint8_t id[16];
+  char uuid[37];
+  uint8_t id;
   LinkedList<Sensor*> sensors;
-  Sensor* add_sensor(uint8_t* sensor_id, uint8_t port, uint64_t interval) {
+  Sensor* add_sensor(char* uuid, uint8_t port, uint64_t interval) {
     Sensor* sensor = new Sensor();
-    memcpy(sensor->id, sensor_id, 16);
+    memcpy(sensor->uuid, uuid, 36);
+    uuid[36] = 0;
     sensor->port = port;
     sensor->interval = interval;
     sensors.add(sensor);
     return sensor;
-  }
-  Sensor* get_sensor(uint8_t* sensor_id) {
-    auto sensor_count = sensors.size();
-    for (int i = 0; i < sensor_count; i++) {
-      Sensor* sensor = sensors.get(i);
-      if (uuid_equals(sensor->id, sensor_id))
-        return sensor;
-    }
-    return nullptr;
   }
   Sensor* get_sensor(uint8_t port) {
     auto sensor_count = sensors.size();
@@ -46,31 +39,39 @@ struct Frog {
 };
 
 struct Multifrog {
-  uint8_t id[16];
+  char uuid[37];
+  uint8_t id;
   LinkedList<Frog*> frogs;
-  Frog* add_frog(uint8_t* frog_id) {
+  Multifrog(const char* _uuid, uint8_t _id) {
+    memcpy(uuid, _uuid, 36);
+    uuid[36] = 0;
+    id = _id;
+  }
+  Frog* add_frog(char* uuid, uint8_t id) {
     Frog* frog = new Frog();
-    memcpy(frog->id, frog_id, 16);
+    memcpy(frog->uuid, uuid, 36);
+    uuid[36] = 0;
+    frog->id = id;
     frogs.add(frog);
     return frog;
   }
-  Frog* get_frog(uint8_t* frog_id) {
+  Frog* get_frog(uint8_t frog_id) {
     auto frog_count = frogs.size();
     for (int i = 0; i < frog_count; i++) {
       Frog* frog = frogs.get(i);
-      if (uuid_equals(frog->id, frog_id))
+      if (frog->id == frog_id)
         return frog;
     }
     return nullptr;
   }
-  Sensor* get_sensor(uint8_t* sensor_id) {
+  Sensor* get_sensor(uint8_t port) {
     auto frog_count = frogs.size();
     for (int i = 0; i < frog_count; i++) {
       Frog* frog = frogs.get(i);
       auto sensor_count = frog->sensors.size();
       for (int i = 0; i < sensor_count; i++) {
         Sensor* sensor = frog->sensors.get(i);
-        if (uuid_equals(sensor->id, sensor_id))
+        if (sensor->port == port)
           return sensor;
       }
     }

@@ -9,15 +9,20 @@
 #include "keys.h"
 #include "utils.hpp"
 
+bool REQUESTING_NOW = false;
+uint64_t LAST_REQUESTED = 0;
+uint16_t LAST_REQUESTED_TIMEOUT = 1000;
+
 #define HC12 Serial2
 #define GSM Serial1
-Multifrog MULTIFROG;
+
+Multifrog MULTIFROG(DEVICE_UUID, DEVICE_ID);
 
 struct Network : public NetworkBase {
   using NetworkBase::NetworkBase;
   void handleMessage() {
     Serial.println("Message to me");
-    switch (parser.message.message_id) {
+    switch (inbound.message_id) {
       case MESSAGE_ID_VALUE: {
         Serial.println("Got readings");
         Frog* frog = MULTIFROG.get_frog(inbound.from_id);
@@ -28,7 +33,7 @@ struct Network : public NetworkBase {
         Reading reading = *(Reading*)inbound.payload;
         Sensor* sensor = frog->get_sensor(reading.port);
         if (!sensor) {
-          Serial.print("Unknown sensor: ");
+          Serial.print("Unknown sensor ");
           Serial.println(reading.port);
           return;
         }
@@ -40,6 +45,7 @@ struct Network : public NetworkBase {
         sensor->last_read = millis();
         sensor->reading = reading.value;
         sensor->fresh = true;
+        REQUESTING_NOW = false;
         return;
       }
     }
@@ -58,9 +64,10 @@ void setup() {
   Serial.begin(115200);
   HC12.begin(9600);
 
-  uuid_parse(DEVICE_UUID, MULTIFROG.id);
   Serial.print("Device UUID: ");
-  Serial.println(DEVICE_UUID);
+  Serial.println(MULTIFROG.uuid);
+  Serial.print("Device ID: ");
+  Serial.println(MULTIFROG.id);
 
   database_setup();
   load_hardware_configuration(MULTIFROG);
@@ -82,7 +89,7 @@ void loop() {
         char time[30];
         sprintf(time, "%lld", sensor->reading_timestamp);
         String path = "/readings/";
-        path += uuid_stringify(sensor->id);
+        path += sensor->uuid;
         path += "/";
         path += time;
         if (!Firebase.RTDB.setFloatAsync(&DB, path.c_str(), sensor->reading)) {
@@ -91,12 +98,28 @@ void loop() {
           Serial.println(DB.errorReason());
         }
       }
+    }
+  }
+  if (REQUESTING_NOW) {
+    if (millis() - LAST_REQUESTED > LAST_REQUESTED_TIMEOUT)
+      REQUESTING_NOW = false;
+    else
+      return;
+  }
+  for (int i = 0; i < frog_count; i++) {
+    Frog* frog = MULTIFROG.frogs.get(i);
+    auto sensor_count = frog->sensors.size();
+    for (int i = 0; i < sensor_count; i++) {
+      Sensor* sensor = frog->sensors.get(i);
       auto now = millis();
       bool unread = sensor->last_requested == 0;
       bool mustRead = unread || now - sensor->last_requested > sensor->interval;
       if (mustRead) {
+        REQUESTING_NOW = true;
+        LAST_REQUESTED = now;
         sensor->last_requested = now;
         network.send(frog->id, MESSAGE_ID_REQUEST_VALUE, 1, &sensor->port);
+        return;
       }
     }
   }
