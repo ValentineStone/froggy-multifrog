@@ -30,20 +30,20 @@ struct Network : public NetworkBase {
           Serial.println("Unknown frog");
           return;
         }
-        Reading reading = *(Reading*)inbound.payload;
-        Sensor* sensor = frog->get_sensor(reading.port);
+        Reading* reading = (Reading*)inbound.payload;
+        Sensor* sensor = frog->get_sensor(reading->port);
         if (!sensor) {
           Serial.print("Unknown sensor ");
-          Serial.println(reading.port);
+          Serial.println(reading->port);
           return;
         }
         Serial.print("On port ");
-        Serial.print(reading.port);
+        Serial.print(reading->port);
         Serial.print(" value=");
-        Serial.println(reading.value);
+        Serial.println(reading->value);
         sensor->reading_timestamp = date_now();
         sensor->last_read = millis();
-        sensor->reading = reading.value;
+        sensor->reading = reading->value;
         sensor->fresh = true;
         REQUESTING_NOW = false;
         return;
