@@ -15,6 +15,8 @@ extern "C"
  * Domain(s): froggy-db.europe-west1.firebasedatabase.app
  */
 
+#define RANDOM_PIN 36
+
 #define TAs_NUM 1
 
 static const unsigned char TA_DN0[] = {

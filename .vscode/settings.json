@@ -9,6 +9,8 @@
     "type_traits": "cpp",
     "utility": "cpp",
     "chrono": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "*.tpp": "cpp",
+    "*.tcc": "cpp"
   }
 }

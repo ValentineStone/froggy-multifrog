@@ -1,7 +1,7 @@
 BasedOnStyle: Chromium
 IndentWidth: 2
 AccessModifierOffset: 0
-AlignAfterOpenBracket: DontAlign
+AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: Consecutive
 AlignConsecutiveBitFields: Consecutive
 AlignConsecutiveDeclarations: Consecutive
@@ -31,7 +31,7 @@ CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 0
 
-ContinuationIndentWidth: 0
+ContinuationIndentWidth: 2
 Cpp11BracedListStyle: false
 
 DeriveLineEnding: true
