@@ -12,6 +12,9 @@
 bool     REQUESTING_NOW         = false;
 uint64_t LAST_REQUESTED         = 0;
 uint16_t LAST_REQUESTED_TIMEOUT = 1000;
+uint64_t LAST_TIMESYNC = 0;
+uint16_t LAST_TIMESYNC_TIMEOUT = 10000;
+uint16_t CURRENT_i = 0;
 
 #define HC12 Serial2
 
@@ -43,26 +46,27 @@ struct Network: public NetworkBase {
         sensor->reading_timestamp = date_now();
         sensor->last_read         = millis();
         sensor->reading           = reading->value;
-        sensor->fresh             = true;
         REQUESTING_NOW            = false;
+        if (!set_reading(sensor))
+          Serial.println("Could not update value");
         return;
       }
     }
   }
   void handleBadMessage() {
-    Serial.println("Got BAD message");
+    //Serial.println("Got BAD message");
   }
   void handleTimeout() {
-    Serial.println("Discarded broken message");
+    //Serial.println("Discarded broken message");
   }
   void handleAnyMessage() {
-    Serial.println("Got message");
+    //Serial.println("Got message");
   }
   void handleSent(uint8_t* msg, uint8_t len) {
-    Serial.println("Sent message");
+    //Serial.println("Sent message");
   }
   void handleBroadcast() {
-    Serial.println("Got Broadcast message");
+    //Serial.println("Got Broadcast message");
   }
 };
 
@@ -95,42 +99,38 @@ void setup() {
   digitalWrite(BUILTIN_LED, HIGH);
 }
 
+
 void loop() {
   network.loop();
-  // loop over frogs
-  auto frog_count = MULTIFROG.frogs.size();
-  for (int i = 0; i < frog_count; i++) {
-    Frog* frog         = MULTIFROG.frogs.get(i);
-    auto  sensor_count = frog->sensors.size();
-    for (int i = 0; i < sensor_count; i++) {
-      Sensor* sensor = frog->sensors.get(i);
-      if (sensor->fresh) {
-        sensor->fresh = false;
-        if (!set_reading(sensor)) Serial.println("Could not update value");
-      }
+  
+  if (millis() - LAST_TIMESYNC > LAST_TIMESYNC_TIMEOUT) {
+    if (!sync_time(false)) {
+      Serial.println("Could not sync time, restarting...");
+      ESP.restart();
+    } else {
+      LAST_TIMESYNC = millis();
     }
   }
+  
   if (REQUESTING_NOW) {
     if (millis() - LAST_REQUESTED > LAST_REQUESTED_TIMEOUT)
       REQUESTING_NOW = false;
     else
       return;
   }
-  for (int i = 0; i < frog_count; i++) {
-    Frog* frog         = MULTIFROG.frogs.get(i);
-    auto  sensor_count = frog->sensors.size();
-    for (int i = 0; i < sensor_count; i++) {
-      Sensor* sensor = frog->sensors.get(i);
-      auto    now    = millis();
-      bool    unread = sensor->last_requested == 0;
-      bool mustRead = unread || now - sensor->last_requested > sensor->interval;
-      if (mustRead) {
-        REQUESTING_NOW         = true;
-        LAST_REQUESTED         = now;
-        sensor->last_requested = now;
-        network.send(frog->id, MESSAGE_ID_REQUEST_VALUE, 1, &sensor->port);
-        return;
-      }
+
+  auto count = MULTIFROG.sensors.size();
+  for (int i = 0; i < count; CURRENT_i = (++i + CURRENT_i) % count) {
+    Sensor* sensor = MULTIFROG.sensors.get(CURRENT_i);
+    auto now      = millis();
+    bool unread   = sensor->last_requested == 0;
+    bool mustRead = unread || now - sensor->last_requested > sensor->interval;
+    if (mustRead) {
+      REQUESTING_NOW         = true;
+      LAST_REQUESTED         = now;
+      sensor->last_requested = now;
+      network.send(sensor->frog->id, MESSAGE_ID_REQUEST_VALUE, 1, &sensor->port);
+      return;
     }
   }
 }

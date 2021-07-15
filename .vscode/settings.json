@@ -11,6 +11,14 @@
     "chrono": "cpp",
     "algorithm": "cpp",
     "*.tpp": "cpp",
-    "*.tcc": "cpp"
+    "*.tcc": "cpp",
+    "deque": "cpp",
+    "string": "cpp",
+    "vector": "cpp",
+    "memory": "cpp",
+    "random": "cpp",
+    "fstream": "cpp",
+    "sstream": "cpp",
+    "stdexcept": "cpp"
   }
 }

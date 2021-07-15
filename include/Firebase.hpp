@@ -14,6 +14,7 @@
 #define WAIT_FOR_WIFI     15000
 
 HttpClient* http_client = nullptr;
+String SIGNATURE = ".json?auth=" + String(DATABASE_SECRET);
 
 bool firebase_setup() {
   if (ethernet_setup(WAIT_FOR_ETHERNET))
@@ -32,30 +33,36 @@ bool set_reading(Sensor* sensor) {
   path += sensor->uuid;
   path += "/";
   path += time;
-  String path_full = path + ".json?auth=" + String(DATABASE_SECRET);
+  String path_full = path + SIGNATURE;
   String value     = String(sensor->reading);
   http_client->put(path_full, "application/json", value);
+  http_client->responseStatusCode();
   bool success = http_client->responseBody().equals(value);
   return success;
 }
 
 uint64_t get_timestamp() {
+  String path = "/multifrogs/";
+  path += DEVICE_UUID;
+  path += "/online";
+  path += SIGNATURE;
   http_client->put(
-    "/timestamp.json?auth=" + String(DATABASE_SECRET),
+    path,
     "application/json",
     "{\".sv\":\"timestamp\"}");
+  http_client->responseStatusCode();
   String   body      = http_client->responseBody();
   uint64_t timestamp = strtoull(body.c_str(), nullptr, 10);
   return timestamp;
 }
 
 String get_config() {
-  String path = "/users/";
-  path += USER_ID;
-  path += "/hardware/";
+  String path = "/multifrogs/";
   path += DEVICE_UUID;
-  path += ".json?auth=" + String(DATABASE_SECRET);
+  path += "/hardware";
+  path += SIGNATURE;
   http_client->get(path);
+  http_client->responseStatusCode();
   String json = http_client->responseBody();
   if (json.length() == 0 || json[0] != '"')
     return "";
@@ -63,33 +70,45 @@ String get_config() {
     return json.substring(1, -1);
 }
 
-bool sync_time() {
-  Serial.println("Tymesync...");
+bool sync_time(bool verbose = true) {
+  if (verbose)
+    Serial.println("Tymesync...");
+  else
+    Serial.print("Tymesync... ");
   timeval tv_now;
   gettimeofday(&tv_now, NULL);
-  Serial.print("Local: sec=");
-  Serial.print(tv_now.tv_sec);
-  Serial.print(" usec=");
-  Serial.println(tv_now.tv_usec);
+  if (verbose) {
+    Serial.print("Local: sec=");
+    Serial.print(tv_now.tv_sec);
+    Serial.print(" usec=");
+    Serial.println(tv_now.tv_usec);
+  }
   uint64_t datenow = get_timestamp();
   if (datenow == 0) return false;
   uint64_t sec  = datenow / 1000L;
   uint64_t usec = datenow % 1000L * 1000L;
-  Serial.print("Server: sec=");
-  Serial.print(sec);
-  Serial.print(" usec=");
-  Serial.println(usec);
+  if (verbose) {
+    Serial.print("Server: sec=");
+    Serial.print(sec);
+    Serial.print(" usec=");
+    Serial.println(usec);
+  }
   tv_now.tv_sec  = sec;
   tv_now.tv_usec = usec;
   settimeofday(&tv_now, nullptr);
   timeval tv_new;
   gettimeofday(&tv_new, NULL);
-  Serial.print("Adjusted: sec=");
-  Serial.print(tv_new.tv_sec);
-  Serial.print(" usec=");
-  Serial.print(tv_new.tv_usec);
-  Serial.print(" date_now=");
-  Serial.println(date_now());
+  if (verbose) {
+    Serial.print("Adjusted: sec=");
+    Serial.print(tv_new.tv_sec);
+    Serial.print(" usec=");
+    Serial.print(tv_new.tv_usec);
+    Serial.print(" date_now=");
+    Serial.println(date_now());
+  } else {
+    Serial.print("now=");
+    Serial.println(date_now());
+  }
   return true;
 }
 
