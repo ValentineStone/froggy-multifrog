@@ -104,7 +104,10 @@ void loop() {
     auto  sensor_count = frog->sensors.size();
     for (int i = 0; i < sensor_count; i++) {
       Sensor* sensor = frog->sensors.get(i);
-      if (sensor->fresh) sensor->fresh = !set_reading(sensor);
+      if (sensor->fresh) {
+        sensor->fresh = false;
+        if (!set_reading(sensor)) Serial.println("Could not update value");
+      }
     }
   }
   if (REQUESTING_NOW) {

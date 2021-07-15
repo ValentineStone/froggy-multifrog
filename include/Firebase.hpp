@@ -32,21 +32,20 @@ bool set_reading(Sensor* sensor) {
   path += sensor->uuid;
   path += "/";
   path += time;
-  path += ".json?auth=" + String(DATABASE_SECRET);
-  auto error =
-    http_client->patch(path, "application/json", String(sensor->reading));
-  return !error && http_client->responseStatusCode() == 200;
+  String path_full = path + ".json?auth=" + String(DATABASE_SECRET);
+  String value     = String(sensor->reading);
+  http_client->put(path_full, "application/json", value);
+  bool success = http_client->responseBody().equals(value);
+  return success;
 }
 
 uint64_t get_timestamp() {
-  auto error = http_client->patch(
-    "/.json?auth=" + String(DATABASE_SECRET),
+  http_client->put(
+    "/timestamp.json?auth=" + String(DATABASE_SECRET),
     "application/json",
-    "{\"timestamp\":{\".sv\":\"timestamp\"}}");
-  if (error) return 0;
-  if (http_client->responseStatusCode() != 200) return 0;
+    "{\".sv\":\"timestamp\"}");
   String   body      = http_client->responseBody();
-  uint64_t timestamp = strtoull(body.c_str() + 13, nullptr, 10);
+  uint64_t timestamp = strtoull(body.c_str(), nullptr, 10);
   return timestamp;
 }
 
@@ -56,14 +55,12 @@ String get_config() {
   path += "/hardware/";
   path += DEVICE_UUID;
   path += ".json?auth=" + String(DATABASE_SECRET);
-  auto error = http_client->get(path);
-  if (error) return "";
-  if (http_client->responseStatusCode() != 200)
+  http_client->get(path);
+  String json = http_client->responseBody();
+  if (json.length() == 0 || json[0] != '"')
     return "";
-  else {
-    auto json = http_client->responseBody();
+  else
     return json.substring(1, -1);
-  }
 }
 
 bool sync_time() {
