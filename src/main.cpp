@@ -47,7 +47,11 @@ struct Network: public NetworkBase {
         sensor->last_read         = millis();
         sensor->reading           = reading->value;
         REQUESTING_NOW            = false;
-        if (!set_reading(sensor))
+        
+        digitalWrite(BUILTIN_LED, LOW);
+        if (set_reading(sensor))
+          digitalWrite(BUILTIN_LED, HIGH);
+        else
           Serial.println("Could not update value");
         return;
       }
