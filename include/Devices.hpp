@@ -3,6 +3,9 @@
 
 #include "utils.hpp"
 
+struct Frog;
+struct Multifrog;
+
 struct Sensor {
   Sensor(Frog* _frog): frog(_frog) {}
   Frog* frog;
@@ -21,16 +24,7 @@ struct Frog {
   LinkedList<Sensor*> sensors;
   Multifrog* multifrog;
   Frog(Multifrog* _multifrog): multifrog(_multifrog) {}
-  Sensor* add_sensor(char* uuid, uint8_t port, uint64_t interval) {
-    Sensor* sensor = new Sensor(this);
-    memcpy(sensor->uuid, uuid, 36);
-    uuid[36] = 0;
-    sensor->port = port;
-    sensor->interval = interval;
-    sensors.add(sensor);
-    multifrog->sensors.add(sensor);
-    return sensor;
-  }
+  Sensor* add_sensor(char*, uint8_t, uint64_t);
   Sensor* get_sensor(uint8_t port) {
     auto sensor_count = sensors.size();
     for (int i = 0; i < sensor_count; i++) {
@@ -88,3 +82,14 @@ struct __attribute__((packed)) Reading {
   uint8_t port;
   float value;
 };
+
+Sensor* Frog::add_sensor(char* uuid, uint8_t port, uint64_t interval) {
+  Sensor* sensor = new Sensor(this);
+  memcpy(sensor->uuid, uuid, 36);
+  uuid[36] = 0;
+  sensor->port = port;
+  sensor->interval = interval;
+  sensors.add(sensor);
+  multifrog->sensors.add(sensor);
+  return sensor;
+}
