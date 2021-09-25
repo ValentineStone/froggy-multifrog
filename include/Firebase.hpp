@@ -14,7 +14,7 @@
 #define WAIT_FOR_WIFI     15000
 
 HttpClient* http_client = nullptr;
-String SIGNATURE = ".json?auth=" + String(DATABASE_SECRET);
+String      SIGNATURE   = ".json?auth=" + String(DATABASE_SECRET);
 
 bool firebase_setup() {
   if (ethernet_setup(WAIT_FOR_ETHERNET))
@@ -26,15 +26,41 @@ bool firebase_setup() {
   return http_client != nullptr;
 }
 
+void purge_zeros(char * num, uint64_t max) {
+  bool found_dot = false;
+  uint64_t size = 0;
+  uint64_t dot = 0;
+  for (uint64_t i = 0; i <= max; i++) {
+    if (num[i] == 0) {
+      size = i;
+      break;
+    } else if (num[i] == '.') {
+      dot = i;
+      found_dot = true;
+    }
+  }
+  if (!found_dot) return; // didnt find decimal part
+  if (size == 0) size = max;
+
+  for (uint64_t i = size - 1; i > dot; i--) {
+    if (num[i] == '0') {
+      num[i] = 0;
+    } else {
+      return; //found nonzero
+    }
+  }
+
+  num[dot] = 0; // didnt find nonzeros, purge dot
+}
+
 bool set_reading(Sensor* sensor) {
-  char time[30];
-  sprintf(time, "%lld", sensor->reading_timestamp);
-  String path = "/readings/";
-  path += sensor->uuid;
-  path += "/";
-  path += time;
-  String path_full = path + SIGNATURE;
-  String value     = String(sensor->reading);
+  char path_full[255];
+  sprintf(path_full, "/readings/%.36s/%lld.json?auth=%s",  sensor->uuid, sensor->reading_timestamp, DATABASE_SECRET);
+  char value[1079];
+  sprintf(value, "%.2f",  sensor->reading);
+  purge_zeros(value, 1079);
+  //Serial.println(path_full);
+  //Serial.println(value);
   http_client->put(path_full, "application/json", value);
   http_client->responseStatusCode();
   bool success = http_client->responseBody().equals(value);
@@ -46,10 +72,7 @@ uint64_t get_timestamp() {
   path += DEVICE_UUID;
   path += "/online";
   path += SIGNATURE;
-  http_client->put(
-    path,
-    "application/json",
-    "{\".sv\":\"timestamp\"}");
+  http_client->put(path, "application/json", "{\".sv\":\"timestamp\"}");
   http_client->responseStatusCode();
   String   body      = http_client->responseBody();
   uint64_t timestamp = strtoull(body.c_str(), nullptr, 10);
