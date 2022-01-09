@@ -19,10 +19,10 @@ String      SIGNATURE   = ".json?auth=" + String(DATABASE_SECRET);
 bool firebase_setup() {
   if (ethernet_setup(WAIT_FOR_ETHERNET))
     http_client = &eth_http_client;
-  else if (gsm_setup(WAIT_FOR_GSM))
-    http_client = &gsm_http_client;
   else if (wifi_setup(WAIT_FOR_WIFI))
     http_client = &wifi_http_client;
+  else if (gsm_setup(WAIT_FOR_GSM))
+    http_client = &gsm_http_client;
   return http_client != nullptr;
 }
 

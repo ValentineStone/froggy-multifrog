@@ -31,8 +31,8 @@ struct __attribute__((packed)) Message {
 
   uint8_t calculate_checksum() {
     uint8_t crc = _crc_ibutton_update(0, message_id);
-    crc = _crc_ibutton_update(0, from_id);
-    crc = _crc_ibutton_update(0, to_id);
+    crc = _crc_ibutton_update(crc, from_id);
+    crc = _crc_ibutton_update(crc, to_id);
     crc = _crc_ibutton_update(crc, payload_length);
     for (uint8_t i = 0; i < payload_length; i++)
       crc = _crc_ibutton_update(crc, payload[i]);
